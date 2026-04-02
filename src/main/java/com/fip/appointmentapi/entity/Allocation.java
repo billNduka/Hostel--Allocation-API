@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 @ToString
 public class Allocation
 {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
