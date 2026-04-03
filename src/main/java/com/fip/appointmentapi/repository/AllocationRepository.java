@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface AllocationRepository extends JpaRepository<Allocation, Long>
 {
-    List<Allocation> findByAllocationCycleId(int cycleId);
+    List<Allocation> findById(int cycleId);
     List<Allocation> findByStatus(AllocationStatus status);
     Optional<Allocation> findByStudentIdAndStatus(Long studentId, AllocationStatus status);
     int countByRoomId(Long roomId);
