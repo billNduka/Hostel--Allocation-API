@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @ToString
-public class Allocation
-{
+public class Allocation {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,7 +21,7 @@ public class Allocation
     private Student student;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
+    @JoinColumn(name = "room_id", nullable = true)  // nullable for waitlisted students
     private Room room;
 
     @Enumerated(EnumType.STRING)
@@ -31,15 +31,17 @@ public class Allocation
     @Column(name = "allocation_date", nullable = false)
     private LocalDateTime allocationDate;
 
-    @Column(name = "allocation_run", nullable = false)
-    private int allocationRun;
+    @Column(name = "allocation_cycle_id", nullable = false)
+    private int allocationCycleId;
 
-    public Allocation(Student student, Room room, AllocationStatus status, int allocationRun)
-    {
+    @Column(name = "waitlist_position")
+    private Integer waitlistPosition;  // null if ALLOCATED, 1-N if WAITLISTED
+
+    public Allocation(Student student, Room room, AllocationStatus status, int allocationCycleId) {
         this.student = student;
         this.room = room;
         this.status = status;
-        this.allocationRun = allocationRun;
+        this.allocationCycleId = allocationCycleId;
         this.allocationDate = LocalDateTime.now();
     }
 }

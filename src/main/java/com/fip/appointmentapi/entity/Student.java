@@ -3,8 +3,6 @@ package com.fip.appointmentapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "students")
@@ -31,10 +29,15 @@ public class Student
     @Column(nullable = false)
     private Gender gender;
 
-    public Student(String name, String matricNumber, Gender gender)
+    @Min(1) @Max(7)
+    @Column(nullable = false)
+    private int yearOfStudy;
+
+    public Student(String name, String matricNumber, Gender gender, int yearOfStudy)
     {
         this.name = name;
         this.matricNumber = matricNumber;
         this.gender = gender;
+        this.yearOfStudy = yearOfStudy;
     }
 }
