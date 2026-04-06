@@ -3,6 +3,8 @@ package com.fip.appointmentapi.service;
 import com.fip.appointmentapi.entity.Gender;
 import com.fip.appointmentapi.entity.Student;
 import com.fip.appointmentapi.entity.Allocation;
+import com.fip.appointmentapi.exception.DuplicateResourceException;
+import com.fip.appointmentapi.exception.ResourceNotFoundException;
 import com.fip.appointmentapi.repository.StudentRepository;
 import com.fip.appointmentapi.repository.AllocationRepository;
 import com.fip.appointmentapi.entity.AllocationStatus;
@@ -27,9 +29,10 @@ public class StudentService
     private final AllocationRepository allocationRepository;
 
     public Student createStudent(Student student) {
-        if (studentRepository.findByMatricNumber(student.getMatricNumber()).isPresent())
-        {
-            throw new RuntimeException("Student with matric number " + student.getMatricNumber() + " already exists");
+        if (studentRepository.findByMatricNumber(student.getMatricNumber()).isPresent()) {
+            throw new DuplicateResourceException(
+                    "Student with matric number " + student.getMatricNumber() + " already exists"
+            );
         }
         return studentRepository.save(student);
     }
@@ -39,10 +42,9 @@ public class StudentService
         return studentRepository.findAll();
     }
 
-    public Student getStudentById(Long id)
-    {
+    public Student getStudentById(Long id) {
         return studentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Student not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Student", id));
     }
 
     public Student getStudentByMatricNumber(String matricNumber)

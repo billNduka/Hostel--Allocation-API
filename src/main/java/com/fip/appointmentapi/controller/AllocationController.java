@@ -77,4 +77,11 @@ public class AllocationController {
         allocationService.promoteFromWaitlist(room, cycleId);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/reset/{cycleId}")
+    public ResponseEntity<String> resetCycle(@PathVariable int cycleId)
+    {
+        allocationService.resetCycle(cycleId);
+        return ResponseEntity.ok("Cycle " + cycleId + " cleared. Ready to re-run.");
+    }
 }

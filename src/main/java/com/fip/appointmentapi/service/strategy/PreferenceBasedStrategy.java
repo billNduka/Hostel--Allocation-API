@@ -7,15 +7,17 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 @Component("PREFERENCE_BASED")
-public class PreferenceBasedStrategy extends BaseAllocationStrategy {
+public class PreferenceBasedStrategy extends BaseAllocationStrategy
+{
 
-    public PreferenceBasedStrategy(RoomRepository roomRepository,
-                                   AllocationRepository allocationRepository) {
+    public PreferenceBasedStrategy(RoomRepository roomRepository, AllocationRepository allocationRepository)
+    {
         super(roomRepository, allocationRepository);
     }
 
     @Override
-    public List<Allocation> allocate(List<Student> students, List<Room> rooms, int cycleId) {
+    public List<Allocation> allocate(List<Student> students, List<Room> rooms, int cycleId)
+    {
         // senior students get their preferences honoured first
         List<Student> ordered = students.stream()
                 .sorted(Comparator.comparingInt(Student::getYearOfStudy).reversed())
@@ -25,15 +27,16 @@ public class PreferenceBasedStrategy extends BaseAllocationStrategy {
         List<Room> availableRooms = new ArrayList<>(rooms);
         int waitlistPosition = 1;
 
-        for (Student student : ordered) {
+        for (Student student : ordered)
+        {
 
-            boolean alreadyAllocated = allocationRepository
-                    .existsByStudentIdAndStatus(student.getId(), AllocationStatus.ALLOCATED);
+            boolean alreadyAllocated = allocationRepository.existsByStudentIdAndStatus(student.getId(), AllocationStatus.ALLOCATED);
             if (alreadyAllocated) continue;
 
             Room match = findRoomForStudent(student, availableRooms);
 
-            if (match != null) {
+            if (match != null)
+            {
                 match.setOccupied(match.getOccupied() + 1);
                 roomRepository.save(match);
 
@@ -44,7 +47,8 @@ public class PreferenceBasedStrategy extends BaseAllocationStrategy {
 
                 if (match.isFull()) availableRooms.remove(match);
 
-            } else {
+            } else
+            {
                 Allocation waitlisted = new Allocation(
                         student, null, AllocationStatus.WAITLISTED, cycleId
                 );

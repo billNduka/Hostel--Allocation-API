@@ -2,6 +2,7 @@ package com.fip.appointmentapi.controller;
 
 import com.fip.appointmentapi.entity.Student;
 import com.fip.appointmentapi.entity.Allocation;
+import com.fip.appointmentapi.exception.InvalidAllocationException;
 import com.fip.appointmentapi.service.StudentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -65,17 +66,18 @@ public class StudentController
     }
 
     @PostMapping("/batch")
-    public ResponseEntity<List<Student>> batchCreateStudents(
-            @RequestBody List<Student> students) {
+    public ResponseEntity<List<Student>> batchCreateStudents(@RequestBody List<Student> students)
+    {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(studentService.batchCreateStudents(students));
     }
 
     @PostMapping("/import/csv")
-    public ResponseEntity<List<Student>> importFromCsv(
-            @RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new RuntimeException("Uploaded file is empty");
+    public ResponseEntity<List<Student>> importFromCsv(@RequestParam("file") MultipartFile file)
+    {
+        if (file == null || file.isEmpty())
+        {
+            throw new InvalidAllocationException("Uploaded file is empty or missing");
         }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(studentService.importFromCsv(file));

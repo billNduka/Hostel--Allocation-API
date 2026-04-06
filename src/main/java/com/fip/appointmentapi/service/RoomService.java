@@ -1,9 +1,12 @@
 package com.fip.appointmentapi.service;
 
-import com.fip.appointmentapi.entity.Room;
+import com.fip.appointmentapi.dto.RoomCreateRequest;
 import com.fip.appointmentapi.entity.Gender;
-import com.fip.appointmentapi.repository.RoomRepository;
+import com.fip.appointmentapi.entity.Hostel;
+import com.fip.appointmentapi.entity.Room;
+import com.fip.appointmentapi.exception.ResourceNotFoundException;
 import com.fip.appointmentapi.repository.HostelRepository;
+import com.fip.appointmentapi.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,11 +21,12 @@ public class RoomService
     private final RoomRepository roomRepository;
     private final HostelRepository hostelRepository;
 
-    public Room createRoom(Room room)
+    public Room createRoom(RoomCreateRequest request)
     {
-        // verify hostel exists before saving room
-        hostelRepository.findById(room.getHostel().getId())
-                .orElseThrow(() -> new RuntimeException("Hostel not found with id: " + room.getHostel().getId()));
+        Hostel hostel = hostelRepository.findById(request.getHostelId())
+                                        .orElseThrow(() -> new ResourceNotFoundException("Hostel", request.getHostelId()));
+        
+        Room room = new Room(hostel, request.getRoomNumber(), request.getCapacity());
         return roomRepository.save(room);
     }
 
@@ -34,7 +38,7 @@ public class RoomService
     public Room getRoomById(Long id)
     {
         return roomRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Room not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Room", id));
     }
 
     public List<Room> getRoomsByHostel(Long hostelId)
@@ -73,14 +77,14 @@ public class RoomService
         roomRepository.delete(room);
     }
 
-    public List<Room> batchCreateRooms(List<Room> rooms) {
+    public List<Room> batchCreateRooms(List<RoomCreateRequest> requests) {
         List<Room> saved = new ArrayList<>();
 
-        for (Room room : rooms) {
-            // verify hostel exists for each room
-            hostelRepository.findById(room.getHostel().getId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Hostel not found with id: " + room.getHostel().getId()));
+        for (RoomCreateRequest request : requests) {
+            Hostel hostel = hostelRepository.findById(request.getHostelId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Hostel", request.getHostelId()));
+            
+            Room room = new Room(hostel, request.getRoomNumber(), request.getCapacity());
             saved.add(roomRepository.save(room));
         }
 

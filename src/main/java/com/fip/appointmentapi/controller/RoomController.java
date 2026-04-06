@@ -1,5 +1,6 @@
 package com.fip.appointmentapi.controller;
 
+import com.fip.appointmentapi.dto.RoomCreateRequest;
 import com.fip.appointmentapi.entity.Room;
 import com.fip.appointmentapi.entity.Gender;
 import com.fip.appointmentapi.service.RoomService;
@@ -18,9 +19,10 @@ public class RoomController
     private final RoomService roomService;
 
     @PostMapping
-    public ResponseEntity<Room> createRoom(@RequestBody Room room)
+    public ResponseEntity<Room> createRoom(@RequestBody RoomCreateRequest request)
     {
-        return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(room));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                            .body(roomService.createRoom(request));
     }
 
     @GetMapping
@@ -73,9 +75,8 @@ public class RoomController
     }
 
     @PostMapping("/batch")
-    public ResponseEntity<List<Room>> batchCreateRooms(
-            @RequestBody List<Room> rooms) {
+    public ResponseEntity<List<Room>> batchCreateRooms(@RequestBody List<RoomCreateRequest> requests) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(roomService.batchCreateRooms(rooms));
+                .body(roomService.batchCreateRooms(requests));
     }
 }

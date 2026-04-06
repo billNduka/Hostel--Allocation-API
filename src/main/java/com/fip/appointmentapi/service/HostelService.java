@@ -2,6 +2,7 @@ package com.fip.appointmentapi.service;
 
 import com.fip.appointmentapi.entity.Hostel;
 import com.fip.appointmentapi.entity.Room;
+import com.fip.appointmentapi.exception.ResourceNotFoundException;
 import com.fip.appointmentapi.repository.HostelRepository;
 import com.fip.appointmentapi.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,10 +27,9 @@ public class HostelService
         return hostelRepository.findAll();
     }
 
-    public Hostel getHostelById(Long id) 
-    {
+    public Hostel getHostelById(Long id) {
         return hostelRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Hostel not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Hostel", id));
     }
 
     public Hostel updateHostel(Long id, Hostel hostelDetails) 

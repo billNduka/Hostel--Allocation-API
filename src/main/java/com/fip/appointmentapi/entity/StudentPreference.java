@@ -9,7 +9,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class StudentPreference {
+public class StudentPreference
+{
 
     @Enumerated(EnumType.STRING)
     @Column(name = "preference_type", nullable = false)

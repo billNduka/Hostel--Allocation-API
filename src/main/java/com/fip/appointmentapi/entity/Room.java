@@ -1,5 +1,6 @@
 package com.fip.appointmentapi.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -19,6 +20,7 @@ public class Room
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hostel_id", nullable = false)
+    @JsonIgnore
     private Hostel hostel;
 
     @NotBlank
@@ -33,16 +35,11 @@ public class Room
     @Column(nullable = false)
     private int occupied = 0;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Gender gender;
-
-    public Room(Hostel hostel, String roomNumber, int capacity, Gender gender)
+    public Room(Hostel hostel, String roomNumber, int capacity)
     {
         this.hostel = hostel;
         this.roomNumber = roomNumber;
         this.capacity = capacity;
-        this.gender = gender;
     }
 
     public int availableSpaces()

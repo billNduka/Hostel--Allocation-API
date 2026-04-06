@@ -1,6 +1,8 @@
 package com.fip.appointmentapi.service;
 
 import com.fip.appointmentapi.entity.*;
+import com.fip.appointmentapi.exception.InvalidAllocationException;
+import com.fip.appointmentapi.exception.ResourceNotFoundException;
 import com.fip.appointmentapi.repository.*;
 import com.fip.appointmentapi.service.strategy.AllocationStrategy;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ public class AllocationService {
     private final StudentRepository studentRepository;
     private final RoomRepository roomRepository;
     private final AuditLogService auditLogService;
+    private final AllocationCycleRepository cycleRepository;
     private final Map<String, AllocationStrategy> strategies;
 
     @Value("${allocation.strategy:FIRST_COME_FIRST_SERVED}")
@@ -29,7 +32,7 @@ public class AllocationService {
 
     public Allocation getAllocationById(Long id) {
         return allocationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Allocation not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Allocation", id));
     }
 
     public List<Allocation> getAllocationsByCycle(int cycleId) {
@@ -57,15 +60,18 @@ public class AllocationService {
 
     @Transactional
     public List<Allocation> runAllocationCycle() {
-        int cycleId = getNextCycleId();
-
         AllocationStrategy strategy = strategies.get(activeStrategy);
         if (strategy == null) {
-            throw new RuntimeException("Unknown strategy: " + activeStrategy);
+            throw new InvalidAllocationException("Unknown strategy: " + activeStrategy);
         }
 
         List<Student> students = studentRepository.findAll();
         List<Room> rooms = roomRepository.findAvailableRooms();
+
+        // create a cycle record — id is auto-incremented and never reused
+        AllocationCycle cycle = new AllocationCycle(activeStrategy, students.size());
+        cycle = cycleRepository.save(cycle);
+        int cycleId = cycle.getId();
 
         auditLogService.log(
                 "CYCLE_STARTED",
@@ -82,6 +88,13 @@ public class AllocationService {
         long waitlisted = results.stream()
                 .filter(a -> a.getStatus() == AllocationStatus.WAITLISTED).count();
 
+        // update cycle record with results
+        cycle.setAllocated((int) allocated);
+        cycle.setWaitlisted((int) waitlisted);
+        cycle.setCompletedAt(java.time.LocalDateTime.now());
+        cycle.setStatus(CycleStatus.COMPLETED);
+        cycleRepository.save(cycle);
+
         auditLogService.log(
                 "CYCLE_COMPLETED",
                 "Cycle " + cycleId + " completed | Allocated: "
@@ -92,7 +105,7 @@ public class AllocationService {
         return results;
     }
 
-    @Transactional
+      @Transactional
     public Allocation reallocateStudent(Long studentId, Long newRoomId) {
         int cycleId = getNextCycleId();
 
@@ -108,16 +121,14 @@ public class AllocationService {
 
         // validate gender match
         if (newRoom.getGender() != current.getStudent().getGender()) {
-            throw new RuntimeException(
-                    "Gender mismatch: student is "
-                            + current.getStudent().getGender()
+            throw new InvalidAllocationException(
+                    "Gender mismatch: student is " + current.getStudent().getGender()
                             + " but room is " + newRoom.getGender()
             );
         }
 
-        // validate room has space
         if (newRoom.isFull()) {
-            throw new RuntimeException(
+            throw new InvalidAllocationException(
                     "Room " + newRoom.getRoomNumber() + " is at full capacity"
             );
         }
@@ -184,8 +195,10 @@ public class AllocationService {
 
     public void setActiveStrategy(String strategyName) {
         if (!strategies.containsKey(strategyName)) {
-            throw new RuntimeException("Unknown strategy: " + strategyName
-                    + ". Available: " + strategies.keySet());
+            throw new InvalidAllocationException(
+                    "Unknown strategy: " + strategyName
+                            + ". Available strategies: " + strategies.keySet()
+            );
         }
         this.activeStrategy = strategyName;
     }
@@ -202,5 +215,35 @@ public class AllocationService {
                 .orElse(0) + 1;
     }
 
+    @Transactional
+    public void resetCycle(int cycleId) {
+        AllocationCycle cycle = cycleRepository.findById(cycleId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No cycle found with id: " + cycleId));
 
+        List<Allocation> cycleAllocations = allocationRepository
+                .findByAllocationCycleId(cycleId);
+
+        for (Allocation allocation : cycleAllocations) {
+            if (allocation.getStatus() == AllocationStatus.ALLOCATED
+                    && allocation.getRoom() != null) {
+                Room room = allocation.getRoom();
+                room.setOccupied(Math.max(0, room.getOccupied() - 1));
+                roomRepository.save(room);
+            }
+        }
+
+        allocationRepository.deleteAll(cycleAllocations);
+
+        // mark cycle as reset — record stays, allocations are gone
+        cycle.setStatus(CycleStatus.RESET);
+        cycleRepository.save(cycle);
+
+        auditLogService.log(
+                "CYCLE_RESET",
+                "Cycle " + cycleId + " reset. "
+                        + cycleAllocations.size() + " records removed.",
+                cycleId
+        );
+    }
 }

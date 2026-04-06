@@ -12,7 +12,8 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @ToString
-public class Hostel {
+public class Hostel
+{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +34,8 @@ public class Hostel {
     @OneToMany(mappedBy = "hostel", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Room> rooms = new ArrayList<>();
 
-    public Hostel(String name, String location, Gender gender) {
+    public Hostel(String name, String location, Gender gender)
+    {
         this.name = name;
         this.location = location;
         this.gender = gender;
