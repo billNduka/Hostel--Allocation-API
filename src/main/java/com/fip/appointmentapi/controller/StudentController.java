@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
 @RestController
@@ -60,5 +62,22 @@ public class StudentController
         return studentService.getCurrentAllocation(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<List<Student>> batchCreateStudents(
+            @RequestBody List<Student> students) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(studentService.batchCreateStudents(students));
+    }
+
+    @PostMapping("/import/csv")
+    public ResponseEntity<List<Student>> importFromCsv(
+            @RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new RuntimeException("Uploaded file is empty");
+        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(studentService.importFromCsv(file));
     }
 }

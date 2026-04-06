@@ -2,6 +2,8 @@ package com.fip.appointmentapi.controller;
 
 import com.fip.appointmentapi.entity.Allocation;
 import com.fip.appointmentapi.entity.AllocationStatus;
+import com.fip.appointmentapi.entity.Room;
+import com.fip.appointmentapi.repository.RoomRepository;
 import com.fip.appointmentapi.service.AllocationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,7 @@ import java.util.List;
 public class AllocationController {
 
     private final AllocationService allocationService;
+    private final RoomRepository roomRepository;
 
     @PostMapping("/run")
     public ResponseEntity<List<Allocation>> runAllocationCycle() {
@@ -56,5 +59,22 @@ public class AllocationController {
     public ResponseEntity<String> setActiveStrategy(@RequestParam String strategy) {
         allocationService.setActiveStrategy(strategy);
         return ResponseEntity.ok("Strategy changed to: " + strategy);
+    }
+
+    @PostMapping("/{studentId}/reallocate")
+    public ResponseEntity<Allocation> reallocateStudent(
+            @PathVariable Long studentId,
+            @RequestParam Long roomId) {
+        return ResponseEntity.ok(allocationService.reallocateStudent(studentId, roomId));
+    }
+
+    @PostMapping("/waitlist/promote")
+    public ResponseEntity<Void> promoteFromWaitlist(
+            @RequestParam Long roomId,
+            @RequestParam int cycleId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+        allocationService.promoteFromWaitlist(room, cycleId);
+        return ResponseEntity.ok().build();
     }
 }

@@ -3,6 +3,8 @@ package com.fip.appointmentapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "students")
@@ -10,8 +12,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @ToString
-public class Student
-{
+public class Student {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,11 +34,22 @@ public class Student
     @Column(nullable = false)
     private int yearOfStudy;
 
-    public Student(String name, String matricNumber, Gender gender, int yearOfStudy)
-    {
+    @ElementCollection
+    @CollectionTable(
+            name = "student_preferences",
+            joinColumns = @JoinColumn(name = "student_id")
+    )
+    @OrderColumn(name = "preference_rank")
+    private List<StudentPreference> preferences = new ArrayList<>();
+
+    public Student(String name, String matricNumber, Gender gender, int yearOfStudy) {
         this.name = name;
         this.matricNumber = matricNumber;
         this.gender = gender;
         this.yearOfStudy = yearOfStudy;
+    }
+
+    public boolean hasPreferences() {
+        return preferences != null && !preferences.isEmpty();
     }
 }

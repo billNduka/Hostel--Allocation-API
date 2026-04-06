@@ -18,9 +18,6 @@ public class AllocationService {
     private final StudentRepository studentRepository;
     private final RoomRepository roomRepository;
     private final AuditLogService auditLogService;
-
-    // Spring injects all AllocationStrategy beans into this map
-    // key = the @Component name e.g. "FIRST_COME_FIRST_SERVED"
     private final Map<String, AllocationStrategy> strategies;
 
     @Value("${allocation.strategy:FIRST_COME_FIRST_SERVED}")
@@ -64,7 +61,7 @@ public class AllocationService {
 
         AllocationStrategy strategy = strategies.get(activeStrategy);
         if (strategy == null) {
-            throw new RuntimeException("Unknown allocation strategy: " + activeStrategy);
+            throw new RuntimeException("Unknown strategy: " + activeStrategy);
         }
 
         List<Student> students = studentRepository.findAll();
@@ -72,7 +69,7 @@ public class AllocationService {
 
         auditLogService.log(
                 "CYCLE_STARTED",
-                "Cycle " + cycleId + " started using strategy: " + activeStrategy
+                "Cycle " + cycleId + " started using: " + activeStrategy
                         + " | Students: " + students.size()
                         + " | Available rooms: " + rooms.size(),
                 cycleId
@@ -87,15 +84,104 @@ public class AllocationService {
 
         auditLogService.log(
                 "CYCLE_COMPLETED",
-                "Cycle " + cycleId + " completed | Allocated: " + allocated
-                        + " | Waitlisted: " + waitlisted,
+                "Cycle " + cycleId + " completed | Allocated: "
+                        + allocated + " | Waitlisted: " + waitlisted,
                 cycleId
         );
 
         return results;
     }
 
-    // allows switching strategy at runtime without restarting
+    @Transactional
+    public Allocation reallocateStudent(Long studentId, Long newRoomId) {
+        int cycleId = getNextCycleId();
+
+        // find current active allocation
+        Allocation current = allocationRepository
+                .findByStudentIdAndStatus(studentId, AllocationStatus.ALLOCATED)
+                .orElseThrow(() -> new RuntimeException(
+                        "No active allocation found for student: " + studentId));
+
+        Room oldRoom = current.getRoom();
+        Room newRoom = roomRepository.findById(newRoomId)
+                .orElseThrow(() -> new RuntimeException("Room not found: " + newRoomId));
+
+        // validate gender match
+        if (newRoom.getGender() != current.getStudent().getGender()) {
+            throw new RuntimeException(
+                    "Gender mismatch: student is "
+                            + current.getStudent().getGender()
+                            + " but room is " + newRoom.getGender()
+            );
+        }
+
+        // validate room has space
+        if (newRoom.isFull()) {
+            throw new RuntimeException(
+                    "Room " + newRoom.getRoomNumber() + " is at full capacity"
+            );
+        }
+
+        // mark old allocation as reallocated
+        current.setStatus(AllocationStatus.REALLOCATED);
+        allocationRepository.save(current);
+
+        // free up old room
+        oldRoom.setOccupied(oldRoom.getOccupied() - 1);
+        roomRepository.save(oldRoom);
+
+        // create new allocation
+        Allocation newAllocation = new Allocation(
+                current.getStudent(), newRoom, AllocationStatus.ALLOCATED, cycleId
+        );
+        allocationRepository.save(newAllocation);
+
+        // fill old room's vacancy from waitlist if anyone is waiting
+        newRoom.setOccupied(newRoom.getOccupied() + 1);
+        roomRepository.save(newRoom);
+
+        promoteFromWaitlist(oldRoom, cycleId);
+
+        auditLogService.log(
+                "REALLOCATED",
+                "Student " + current.getStudent().getMatricNumber()
+                        + " moved from room " + oldRoom.getRoomNumber()
+                        + " to room " + newRoom.getRoomNumber(),
+                cycleId
+        );
+
+        return newAllocation;
+    }
+
+    @Transactional
+    public void promoteFromWaitlist(Room room, int cycleId) {
+        if (room.isFull()) return;
+
+        // get the next person on the waitlist by position
+        allocationRepository
+                .findTopByStatusOrderByWaitlistPositionAsc(AllocationStatus.WAITLISTED)
+                .ifPresent(waitlisted -> {
+
+                    // gender check before promoting
+                    if (waitlisted.getStudent().getGender() != room.getGender()) return;
+
+                    waitlisted.setStatus(AllocationStatus.ALLOCATED);
+                    waitlisted.setRoom(room);
+                    waitlisted.setWaitlistPosition(null);
+                    allocationRepository.save(waitlisted);
+
+                    room.setOccupied(room.getOccupied() + 1);
+                    roomRepository.save(room);
+
+                    auditLogService.log(
+                            "WAITLIST_PROMOTED",
+                            "Student " + waitlisted.getStudent().getMatricNumber()
+                                    + " promoted from waitlist to room " + room.getRoomNumber(),
+                            cycleId
+                    );
+                });
+    }
+
     public void setActiveStrategy(String strategyName) {
         if (!strategies.containsKey(strategyName)) {
             throw new RuntimeException("Unknown strategy: " + strategyName
@@ -115,4 +201,6 @@ public class AllocationService {
                 .max()
                 .orElse(0) + 1;
     }
+
+
 }

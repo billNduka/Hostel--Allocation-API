@@ -19,4 +19,9 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long>
 
     // check if student already has an active allocation before assigning
     boolean existsByStudentIdAndStatus(Long studentId, AllocationStatus status);
+
+    // needed for reallocation and waitlist promotion
+    Optional<Allocation> findTopByStatusOrderByWaitlistPositionAsc(AllocationStatus status);
+
+    List<Allocation> findByStudentId(Long studentId);
 }

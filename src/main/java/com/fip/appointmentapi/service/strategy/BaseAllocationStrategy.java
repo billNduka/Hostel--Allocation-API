@@ -8,12 +8,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RequiredArgsConstructor
-public abstract class BaseAllocationStrategy implements AllocationStrategy {
+public abstract class BaseAllocationStrategy implements AllocationStrategy
+{
 
     protected final RoomRepository roomRepository;
     protected final AllocationRepository allocationRepository;
 
-    protected List<Allocation> doAllocate(List<Student> students, List<Room> rooms, int cycleId) {
+    protected List<Allocation> doAllocate(List<Student> students, List<Room> rooms, int cycleId)
+    {
         List<Allocation> results = new ArrayList<>();
         List<Room> availableRooms = new ArrayList<>(rooms);
         int waitlistPosition = 1;
@@ -32,7 +34,8 @@ public abstract class BaseAllocationStrategy implements AllocationStrategy {
                     .findFirst()
                     .orElse(null);
 
-            if (match != null) {
+            if (match != null)
+            {
                 match.setOccupied(match.getOccupied() + 1);
                 roomRepository.save(match);
 
@@ -42,7 +45,8 @@ public abstract class BaseAllocationStrategy implements AllocationStrategy {
                 results.add(allocationRepository.save(allocation));
 
                 // remove from available list if now full
-                if (match.isFull()) {
+                if (match.isFull())
+                {
                     availableRooms.remove(match);
                 }
 

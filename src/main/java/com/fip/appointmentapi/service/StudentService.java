@@ -1,5 +1,6 @@
 package com.fip.appointmentapi.service;
 
+import com.fip.appointmentapi.entity.Gender;
 import com.fip.appointmentapi.entity.Student;
 import com.fip.appointmentapi.entity.Allocation;
 import com.fip.appointmentapi.repository.StudentRepository;
@@ -9,6 +10,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
+import com.fip.appointmentapi.dto.StudentCsvRecord;
+import com.opencsv.bean.CsvToBeanBuilder;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.ArrayList;
+
 
 @Service
 @RequiredArgsConstructor
@@ -62,5 +70,49 @@ public class StudentService
     {
         getStudentById(studentId); // verify student exists first
         return allocationRepository.findByStudentIdAndStatus(studentId, AllocationStatus.ALLOCATED);
+    }
+
+    public List<Student> batchCreateStudents(List<Student> students) {
+        List<Student> saved = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
+
+        for (Student student : students) {
+            if (studentRepository.findByMatricNumber(student.getMatricNumber()).isPresent()) {
+                skipped.add(student.getMatricNumber());
+                continue;
+            }
+            saved.add(studentRepository.save(student));
+        }
+
+        if (!skipped.isEmpty()) {
+            System.out.println("Skipped existing matric numbers: " + skipped);
+        }
+
+        return saved;
+    }
+
+    public List<Student> importFromCsv(MultipartFile file) {
+        try (Reader reader = new InputStreamReader(file.getInputStream())) {
+
+            List<StudentCsvRecord> records = new CsvToBeanBuilder<StudentCsvRecord>(reader)
+                    .withType(StudentCsvRecord.class)
+                    .withIgnoreLeadingWhiteSpace(true)
+                    .build()
+                    .parse();
+
+            List<Student> students = records.stream()
+                    .map(r -> new Student(
+                            r.getName(),
+                            r.getMatricNumber(),
+                            Gender.valueOf(r.getGender().toUpperCase()),
+                            r.getYearOfStudy()
+                    ))
+                    .toList();
+
+            return batchCreateStudents(students);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse CSV file: " + e.getMessage());
+        }
     }
 }

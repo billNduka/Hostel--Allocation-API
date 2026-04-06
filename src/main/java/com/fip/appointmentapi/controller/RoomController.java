@@ -71,4 +71,11 @@ public class RoomController
         roomService.deleteRoom(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/batch")
+    public ResponseEntity<List<Room>> batchCreateRooms(
+            @RequestBody List<Room> rooms) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(roomService.batchCreateRooms(rooms));
+    }
 }

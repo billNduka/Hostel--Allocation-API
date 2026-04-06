@@ -6,6 +6,8 @@ import com.fip.appointmentapi.repository.RoomRepository;
 import com.fip.appointmentapi.repository.HostelRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -69,5 +71,19 @@ public class RoomService
     {
         Room room = getRoomById(id);
         roomRepository.delete(room);
+    }
+
+    public List<Room> batchCreateRooms(List<Room> rooms) {
+        List<Room> saved = new ArrayList<>();
+
+        for (Room room : rooms) {
+            // verify hostel exists for each room
+            hostelRepository.findById(room.getHostel().getId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Hostel not found with id: " + room.getHostel().getId()));
+            saved.add(roomRepository.save(room));
+        }
+
+        return saved;
     }
 }
